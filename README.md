@@ -6,11 +6,11 @@ A *100% Cabal/Stack-free* experience for the **true masochists** of Haskell deve
 
 ## ✨ Features  
 
-- **`.matic` config files** (because YAML is for cowards)  
-- **Gaslight HLS** into thinking your project is "normal"  
-- **Watch mode** that scours your project for changes every 4 seconds (patience is a virtue you don’t have)  
-- **Nuclear clean** (no survivors, no traces, only pain)  
-- **Zero dependencies** (except `ghc`, `bash`, and your poor life choices)  
+- **`.matic` config files** (because YAML is for cowards).
+- **Gaslight HLS** into thinking your project is "normal".
+- **Watch mode** that scours your project for changes every 4 seconds (patience is a virtue you don’t have).
+- **Nuclear clean** (no survivors, no traces, only pain).
+- **Zero dependencies** (except `ghc`, `bash`, and your poor life choices).
 
 ## 💀 Quick Start  
 
@@ -40,27 +40,26 @@ A *100% Cabal/Stack-free* experience for the **true masochists** of Haskell deve
    
 4. **Clean up the evidence:**  
    ```sh
-   ./build.sh clean my-project
+   ./matic clean my-project
    ```  
    *Your project will wake up tomorrow with no memory of ever compiling.*  
 
 ## 🔥 Why?  
 
-- **You loathe Cabal.**  
-- **You hate Stack.**  
-- **You love chaos.**  
+- **You have a grudge against Cabal and Stack.**
+- **You love chaos and pain.**
 - **You’re probably a danger to society.**  
 
 ## 🚨 Warning  
 
 This tool:  
-- **Will** corrupt your global GHC package db.  
+- **Will** corrupt your global GHC package DB.  
 - **Will** make HLS question its life choices.  
-- **Will not** scale beyond ~20 files (that’s a *you* problem).  
+- **Will not** scale beyond ~20 files (seems like a *you* problem).  
 
 ## 🏴‍☠️ Contribute?  
 
-No.
+Why on earth would you subject yourself to that?
 
 ---
 

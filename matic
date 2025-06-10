@@ -255,7 +255,7 @@ clean() {
     cli-command "cleaning" ""
     
     find "$OUT_DIR" -name "*.hi" -o -name "*.o" -o -name "$NAME" | while read -r file; do
-        rm -f "$file"
+         rm -f "$file"
     done
     rm -rf "$OUT_DIR"
 
