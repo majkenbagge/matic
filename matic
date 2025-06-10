@@ -1,0 +1,300 @@
+#!/usr/bin/env bash
+
+# === TODO ===
+# - Add packages!
+
+
+set -e  # Exit on (t)error
+
+
+# === Globals ===
+INDENT=0
+
+NAME=null
+SOURCE_DIR=null
+LIBRARY_DIR=null
+OUT_DIR=null
+MAIN=null
+FLAGS=()
+
+
+# === CLI helpers ===
+cli-indent() {
+    local _indent=$((INDENT - ${#1}))
+
+    if [ "$INDENT" -gt 0 ]; then
+       printf "%*s" "$_indent" ""
+    else
+       printf ""
+    fi
+}
+
+cli-format() {
+    printf "\033[%sm[%s]\033[0m" "$1" "$2"
+}
+
+cli-header() {
+    echo -e "$(cli-format 31 "$1")"
+}
+
+cli-good() {
+    echo -e "$(cli-format 32 "$1")"
+}
+
+cli-bad() {
+    echo -e "$(cli-format 31 "$1") $(cli-indent "$1")$2"
+}
+
+cli-command() {
+    echo -e "$(cli-format 36 "$1") $(cli-indent "$1")$2"
+}
+
+cli-info() {
+    local _title="info"
+
+    echo -e "$(cli-format 34 "$_title") $(cli-indent "$_title")$1"
+}
+
+cli-pure() {
+    echo -e "   $(cli-indent "")$1"
+}
+
+cli-prompt() {
+    echo -e -n "$(cli-format 35 "$1?") $(cli-indent "$1?")"
+}
+
+
+# === Utility ===
+config() {
+    local -a _flags
+
+    while read -r line || [[ $line ]]; do
+          IFS=':' read -ra parts <<< "$line"
+
+          key=$(echo "${parts[0]}" | xargs)
+          value=$(echo "${parts[1]}" | xargs)
+
+          case "$key" in
+               "name")        NAME="$value"        ;;
+               "source-dir")  SOURCE_DIR="$value"  ;;
+               "library-dir") LIBRARY_DIR="$value" ;;
+               "out-dir")     OUT_DIR="$value"     ;;
+               "main")        MAIN="$value"        ;;
+               "flags")       _flags="$value"      ;;
+          esac
+    done < "$1.matic"
+
+    if [ -z "$NAME" ] || [ -z "$SOURCE_DIR" ] || [ -z "$OUT_DIR" ] || [ -z "$MAIN" ]; then
+       cli-bad "oh no!" "the project's .matic file is missing one or more values"
+       exit 1
+    fi
+
+    if [ -z "$_flags" ]; then
+       IFS=' ' read -ra FLAGS <<< "$_flags"
+    fi
+
+    FLAGS+=("-i$SOURCE_DIR")
+
+    if [ -n "$LIBRARY_DIR" ]; then
+       FLAGS+=("-i$LIBRARY_DIR")
+    fi
+}
+
+make-dir() {
+    if [ -d "$1" ]; then
+       cli-info "found directory \"$1\""
+    else
+       cli-info "creating directory \"$1\""
+       mkdir -p "$1"
+    fi
+}
+
+
+# === Flags ===
+flag-gaslight() {
+    local _hie
+
+    INDENT=11
+
+    cli-command "gaslighting" "gaslighting, gatekeeping & girlbossing hls"
+    cli-pure                  "(you might want to restart your editor)"
+
+    _hie="cradle:\n  direct:\n    arguments:"
+
+    for i in "${!FLAGS[@]}"; do
+        _hie+="\n      - ${FLAGS[$i]}"
+    done
+
+    echo -e "$_hie" > "hie.yaml"
+
+    cli-good "done"
+}
+
+flags() {
+    case "$1" in
+         -gaslight) flag-gaslight ;;
+         *)                       ;;
+    esac
+}
+
+# === Create ===
+create() {
+    local _file
+
+    INDENT=18
+
+    cli-command "creating" "starting a new .matic file"
+
+    _file=""
+
+    cli-prompt  "project name"
+    read -r c_name
+    if [ "$c_name" = "" ]; then
+       cli-bad "oh no!" "your project needs a name"
+       exit 1
+    fi
+    _file+="name:        $c_name"
+
+    cli-prompt "source directory"
+    read -r c_source_dir
+    if [ "$c_source_dir" = "" ]; then
+       c_source_dir="src"
+    fi
+    make-dir "$c_source_dir"
+    _file+="\nsource-dir:  $c_source_dir"
+
+    cli-prompt "library directory"
+    read -r c_library_dir
+    if [ "$c_library_dir" != "" ]; then
+        make-dir "$c_library_dir"
+       _file+="\nlibrary-dir: $c_library_dir"
+    fi
+
+    cli-prompt "target directory"
+    read -r c_out_dir
+    if [ "$c_out_dir" = "" ]; then
+       c_out_dir="bin"
+    fi
+    make-dir "$c_out_dir"
+    _file+="\nout-dir:     $c_out_dir"
+
+    cli-prompt "main file"
+    read -r c_main
+    if [ "$c_main" = "" ]; then
+       c_main="main.hs"
+    fi
+    if [ -f "$c_source_dir/$c_main" ]; then
+       cli-info "found file \"$c_main\""
+    else
+       cli-info "creating file \"$c_main\""
+       echo -e "module Main where\n\n\nmain :: IO ()\nmain = putStrLn \"hi!\"" > "$c_source_dir/$c_main"
+    fi
+    _file+="\nmain:        $c_main"
+
+    cli-prompt "flags"
+    read -r c_flags
+    if [ "$c_flags" != "" ]; then
+       _file+="\nflags:       $c_flags"
+    fi
+
+    cli-info "creating .matic file \"$c_name.matic\""
+    echo -e "$_file" > "$c_name.matic"
+
+    cli-good "done"
+}
+
+# === Build ===
+build() {
+    INDENT=8
+
+    cli-command "building" "$NAME"
+    make-dir    "$OUT_DIR"
+    cli-info    "building \"$OUT_DIR/$NAME\""
+    ghc --make "${FLAGS[@]}" -outputdir "$OUT_DIR" -o "$OUT_DIR/$NAME" "$SOURCE_DIR/$MAIN"
+    cli-good    "done"
+}
+
+# === Run ===
+run() {
+    INDENT=7
+
+    cli-command "running" "$OUT_DIR/$NAME"
+    ./"$OUT_DIR/$NAME"
+    cli-good    "done"
+}
+
+# === Watch ===
+watch() {
+    local _state
+    local _next
+
+    INDENT=8
+
+    cli-command "watching" "directory \"$SOURCE_DIR\""
+    cli-pure    "(press ⌃c to stop)"
+
+    _state=$(find "$SOURCE_DIR" -type -type f -print0 | xargs -0 shasum | awk '{print $1}' | sort -n)
+
+    while true; do
+          _next=$(find "$SOURCE_DIR" -type f -print0 | xargs -0 shasum | awk '{print $1}' | sort -n)
+
+          if [[ "$_state" != "$_next" ]]; then
+             build
+             run
+             _state="$_next"
+          fi
+
+          sleep 4
+    done
+}
+
+# === Clean ===
+clean() {
+    INDENT=8
+
+    cli-command "cleaning" ""
+    
+    find "$OUT_DIR" -name "*.hi" -o -name "*.o" -o -name "$NAME" | while read -r file; do
+        rm -f "$file"
+    done
+    rm -rf "$OUT_DIR"
+
+    cli-good    "done"
+}
+
+# === Usage ===
+usage() {
+    INDENT=8
+    cli-command "usage"    "$0 {command} {flags}"
+    cli-command "commands" "create       → initializes a new project"
+    cli-pure               "build {name} → builds the project"
+    cli-pure               "run {name}   → builds & runs the project"
+    cli-pure               "watch {name} → watches the project source, rebuilds & runs it on updates"
+    cli-pure               "clean {name} → nukes everything for a clean slate"
+    cli-command "flags"    "-gaslight    → bullies hls into shutting up forever"
+}
+
+# === CLI ===
+cli-header "haskell build-o-matic™ 5000"
+case "$1" in
+     create) create
+             ;;
+     build)  config "$2"
+             flags "$3"
+             build
+             ;;
+     run)    config "$2"
+             flags "$3"
+             build
+             run
+             ;;
+     watch)  config "$2"
+             flags "$3"
+             watch
+             ;;
+     clean)  config "$2"
+             clean
+             ;;
+     *)      usage
+             ;;
+esac
