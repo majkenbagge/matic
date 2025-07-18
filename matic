@@ -89,7 +89,7 @@ config() {
        exit 1
     fi
 
-    if [ -z "$_flags" ]; then
+    if [ -n "$_flags" ]; then
        IFS=' ' read -ra FLAGS <<< "$_flags"
     fi
 
@@ -125,6 +125,8 @@ flag-gaslight() {
         _hie+="\n      - ${FLAGS[$i]}"
     done
 
+    _hie+="\n      - -fno-code"
+
     echo -e "$_hie" > "hie.yaml"
 
     cli-good "done"
@@ -149,56 +151,56 @@ create() {
 
     cli-prompt  "project name"
     read -r c_name
-    if [ "$c_name" = "" ]; then
+    if [ "$_name" = "" ]; then
        cli-bad "oh no!" "your project needs a name"
        exit 1
     fi
-    _file+="name:        $c_name"
+    _file+="name:        $_name"
 
     cli-prompt "source directory"
-    read -r c_source_dir
-    if [ "$c_source_dir" = "" ]; then
-       c_source_dir="src"
+    read -r _source_dir
+    if [ "$_source_dir" = "" ]; then
+       _source_dir="src"
     fi
-    make-dir "$c_source_dir"
-    _file+="\nsource-dir:  $c_source_dir"
+    make-dir "$_source_dir"
+    _file+="\nsource-dir:  $_source_dir"
 
     cli-prompt "library directory"
-    read -r c_library_dir
-    if [ "$c_library_dir" != "" ]; then
-        make-dir "$c_library_dir"
-       _file+="\nlibrary-dir: $c_library_dir"
+    read -r _library_dir
+    if [ "$_library_dir" != "" ]; then
+        make-dir "$_library_dir"
+       _file+="\nlibrary-dir: $_library_dir"
     fi
 
     cli-prompt "target directory"
-    read -r c_out_dir
-    if [ "$c_out_dir" = "" ]; then
-       c_out_dir="bin"
+    read -r _out_dir
+    if [ "$_out_dir" = "" ]; then
+       _out_dir="bin"
     fi
-    make-dir "$c_out_dir"
-    _file+="\nout-dir:     $c_out_dir"
+    make-dir "$_out_dir"
+    _file+="\nout-dir:     $_out_dir"
 
     cli-prompt "main file"
-    read -r c_main
-    if [ "$c_main" = "" ]; then
-       c_main="main.hs"
+    read -r _main
+    if [ "$_main" = "" ]; then
+       _main="main.hs"
     fi
-    if [ -f "$c_source_dir/$c_main" ]; then
-       cli-info "found file \"$c_main\""
+    if [ -f "$_source_dir/$_main" ]; then
+       cli-info "found file \"$_main\""
     else
-       cli-info "creating file \"$c_main\""
+       cli-info "creating file \"$_main\""
        echo -e "module Main where\n\n\nmain :: IO ()\nmain = putStrLn \"hi!\"" > "$c_source_dir/$c_main"
     fi
-    _file+="\nmain:        $c_main"
+    _file+="\nmain:        $_main"
 
     cli-prompt "flags"
-    read -r c_flags
-    if [ "$c_flags" != "" ]; then
-       _file+="\nflags:       $c_flags"
+    read -r _flags
+    if [ "$_flags" != "" ]; then
+       _file+="\nflags:       $_flags"
     fi
 
-    cli-info "creating .matic file \"$c_name.matic\""
-    echo -e "$_file" > "$c_name.matic"
+    cli-info "creating .matic file \"$_name.matic\""
+    echo -e "$_file" > "$_name.matic"
 
     cli-good "done"
 }
@@ -253,7 +255,7 @@ clean() {
     INDENT=8
 
     cli-command "cleaning" ""
-    
+
     find "$OUT_DIR" -name "*.hi" -o -name "*.o" -o -name "$NAME" | while read -r file; do
          rm -f "$file"
     done
