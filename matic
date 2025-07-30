@@ -13,7 +13,8 @@ INDENT=0
 NAME=null
 SOURCE_DIR=null
 LIBRARY_DIR=null
-OUT_DIR=null
+BUILD_DIR=null
+BIN_DIR=null
 MAIN=null
 FLAGS=()
 
@@ -78,13 +79,14 @@ config() {
                "name")        NAME="$value"        ;;
                "source-dir")  SOURCE_DIR="$value"  ;;
                "library-dir") LIBRARY_DIR="$value" ;;
-               "out-dir")     OUT_DIR="$value"     ;;
+               "build-dir")   BUILD_DIR="$value"   ;;
+               "bin_dir")     BIN_DIR="$value"     ;;
                "main")        MAIN="$value"        ;;
                "flags")       _flags="$value"      ;;
           esac
     done < "$1.matic"
 
-    if [ -z "$NAME" ] || [ -z "$SOURCE_DIR" ] || [ -z "$OUT_DIR" ] || [ -z "$MAIN" ]; then
+    if [ -z "$NAME" ] || [ -z "$SOURCE_DIR" ] || [ -z "$BUILD_DIR" ] || [ -z "$BIN_DIR" ] || [ -z "$MAIN" ]; then
        cli-bad "oh no!" "the project's .matic file is missing one or more values"
        exit 1
     fi
@@ -150,7 +152,7 @@ create() {
     _file=""
 
     cli-prompt  "project name"
-    read -r c_name
+    read -r _name
     if [ "$_name" = "" ]; then
        cli-bad "oh no!" "your project needs a name"
        exit 1
@@ -172,13 +174,21 @@ create() {
        _file+="\nlibrary-dir: $_library_dir"
     fi
 
-    cli-prompt "target directory"
-    read -r _out_dir
-    if [ "$_out_dir" = "" ]; then
-       _out_dir="bin"
+    cli-prompt "build directory"
+    read -r _build_dir
+    if [ "$_build_dir" = "" ]; then
+       _build_dir="build"
     fi
-    make-dir "$_out_dir"
-    _file+="\nout-dir:     $_out_dir"
+    make-dir "$_build_dir"
+    _file+="\nbuild-dir:   $_build_dir"
+
+    cli-prompt "binary directory"
+    read -r _bin_dir
+    if [ "$_bin_dir" = "" ]; then
+       _bin_dir="bin"
+    fi
+    make-dir "$_bin_dir"
+    _file+="\nbin-dir:     $_bin_dir"
 
     cli-prompt "main file"
     read -r _main
@@ -210,9 +220,10 @@ build() {
     INDENT=8
 
     cli-command "building" "$NAME"
-    make-dir    "$OUT_DIR"
-    cli-info    "building \"$OUT_DIR/$NAME\""
-    ghc --make "${FLAGS[@]}" -outputdir "$OUT_DIR" -o "$OUT_DIR/$NAME" "$SOURCE_DIR/$MAIN"
+    make-dir    "$BUILD_DIR"
+    make-dir    "$BIN_DIR"
+    cli-info    "building \"$BIN_DIR/$NAME\""
+    ghc --make "${FLAGS[@]}" -outputdir "$BUILD_DIR" -o "$BIN_DIR/$NAME" "$SOURCE_DIR/$MAIN"
     cli-good    "done"
 }
 
@@ -220,8 +231,8 @@ build() {
 run() {
     INDENT=7
 
-    cli-command "running" "$OUT_DIR/$NAME"
-    ./"$OUT_DIR/$NAME"
+    cli-command "running" "$BIN_DIR/$NAME"
+    ./"$BIN_DIR/$NAME"
     cli-good    "done"
 }
 
@@ -256,10 +267,15 @@ clean() {
 
     cli-command "cleaning" ""
 
-    find "$OUT_DIR" -name "*.hi" -o -name "*.o" -o -name "$NAME" | while read -r file; do
+    find "$BUILD_DIR" -name "*.hi" -o -name "*.o" | while read -r file; do
          rm -f "$file"
     done
-    rm -rf "$OUT_DIR"
+    rm -rf "$BUILD_DIR"
+
+    find "$BIN_DIR" -name "*" | while read -r file; do
+         rm -f "$file"
+    done
+    rm -rf "$BIN_DIR"
 
     cli-good    "done"
 }
