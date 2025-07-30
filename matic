@@ -80,7 +80,7 @@ config() {
                "source-dir")  SOURCE_DIR="$value"  ;;
                "library-dir") LIBRARY_DIR="$value" ;;
                "build-dir")   BUILD_DIR="$value"   ;;
-               "bin_dir")     BIN_DIR="$value"     ;;
+               "bin-dir")     BIN_DIR="$value"     ;;
                "main")        MAIN="$value"        ;;
                "flags")       _flags="$value"      ;;
           esac
