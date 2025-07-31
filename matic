@@ -14,7 +14,7 @@ NAME=null
 SOURCE_DIR=null
 LIBRARY_DIR=null
 BUILD_DIR=null
-BIN_DIR=null
+BINARY_DIR=null
 MAIN=null
 FLAGS=()
 
@@ -80,13 +80,13 @@ config() {
                "source-dir")  SOURCE_DIR="$value"  ;;
                "library-dir") LIBRARY_DIR="$value" ;;
                "build-dir")   BUILD_DIR="$value"   ;;
-               "bin-dir")     BIN_DIR="$value"     ;;
+               "binary-dir")  BINARY_DIR="$value"     ;;
                "main")        MAIN="$value"        ;;
                "flags")       _flags="$value"      ;;
           esac
     done < "$1.matic"
 
-    if [ -z "$NAME" ] || [ -z "$SOURCE_DIR" ] || [ -z "$BUILD_DIR" ] || [ -z "$BIN_DIR" ] || [ -z "$MAIN" ]; then
+    if [ -z "$NAME" ] || [ -z "$SOURCE_DIR" ] || [ -z "$BUILD_DIR" ] || [ -z "$BINARY_DIR" ] || [ -z "$MAIN" ]; then
        cli-bad "oh no!" "the project's .matic file is missing one or more values"
        exit 1
     fi
@@ -183,12 +183,12 @@ create() {
     _file+="\nbuild-dir:   $_build_dir"
 
     cli-prompt "binary directory"
-    read -r _bin_dir
-    if [ "$_bin_dir" = "" ]; then
-       _bin_dir="bin"
+    read -r _binary_dir
+    if [ "$_binary_dir" = "" ]; then
+       _binary_dir="bin"
     fi
-    make-dir "$_bin_dir"
-    _file+="\nbin-dir:     $_bin_dir"
+    make-dir "$_binary_dir"
+    _file+="\nbinary-dir:  $_binary_dir"
 
     cli-prompt "main file"
     read -r _main
@@ -199,7 +199,7 @@ create() {
        cli-info "found file \"$_main\""
     else
        cli-info "creating file \"$_main\""
-       echo -e "module Main where\n\n\nmain :: IO ()\nmain = putStrLn \"hi!\"" > "$c_source_dir/$c_main"
+       echo -e "module Main where\n\n\nmain :: IO ()\nmain = putStrLn \"hi!\"" > "$_source_dir/$_main"
     fi
     _file+="\nmain:        $_main"
 
@@ -221,9 +221,9 @@ build() {
 
     cli-command "building" "$NAME"
     make-dir    "$BUILD_DIR"
-    make-dir    "$BIN_DIR"
-    cli-info    "building \"$BIN_DIR/$NAME\""
-    ghc --make "${FLAGS[@]}" -outputdir "$BUILD_DIR" -o "$BIN_DIR/$NAME" "$SOURCE_DIR/$MAIN"
+    make-dir    "$BINARY_DIR"
+    cli-info    "building \"$BINARY_DIR/$NAME\""
+    ghc --make "${FLAGS[@]}" -outputdir "$BUILD_DIR" -o "$BINARY_DIR/$NAME" "$SOURCE_DIR/$MAIN"
     cli-good    "done"
 }
 
@@ -231,8 +231,8 @@ build() {
 run() {
     INDENT=7
 
-    cli-command "running" "$BIN_DIR/$NAME"
-    ./"$BIN_DIR/$NAME"
+    cli-command "running" "$BINARY_DIR/$NAME"
+    ./"$BINARY_DIR/$NAME"
     cli-good    "done"
 }
 
@@ -243,15 +243,29 @@ watch() {
 
     INDENT=8
 
-    cli-command "watching" "directory \"$SOURCE_DIR\""
+    if [ -n "$LIBRARY_DIR" ]; then
+       cli-command "watching" "directories \"$SOURCE_DIR\", \"$LIBRARY_DIR\""
+       _state=$(find "$SOURCE_DIR" "$LIBRARY_DIR" -type f -print0 | xargs -0 shasum | awk '{print $1}' | sort -n)
+    else
+       cli-command "watching" "directory \"$SOURCE_DIR\""
+       _state=$(find "$SOURCE_DIR" -type f -print0 | xargs -0 shasum | awk '{print $1}' | sort -n)
+    fi
+
     cli-pure    "(press ⌃c to stop)"
 
-    _state=$(find "$SOURCE_DIR" -type -type f -print0 | xargs -0 shasum | awk '{print $1}' | sort -n)
+    build
+    run
 
     while true; do
-          _next=$(find "$SOURCE_DIR" -type f -print0 | xargs -0 shasum | awk '{print $1}' | sort -n)
+
+          if [ -n "$LIBRARY_DIR" ]; then
+             _next=$(find "$SOURCE_DIR" "$LIBRARY_DIR" -type f -print0 | xargs -0 shasum | awk '{print $1}' | sort -n)
+          else
+             _next=$(find "$SOURCE_DIR" -type f -print0 | xargs -0 shasum | awk '{print $1}' | sort -n)
+          fi
 
           if [[ "$_state" != "$_next" ]]; then
+             cli-info "something changed"
              build
              run
              _state="$_next"
@@ -272,10 +286,10 @@ clean() {
     done
     rm -rf "$BUILD_DIR"
 
-    find "$BIN_DIR" -name "*" | while read -r file; do
+    find "$BINARY_DIR" -name "*" | while read -r file; do
          rm -f "$file"
     done
-    rm -rf "$BIN_DIR"
+    rm -rf "$BINARY_DIR"
 
     cli-good    "done"
 }
